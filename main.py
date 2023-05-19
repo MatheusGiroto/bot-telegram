@@ -1,13 +1,15 @@
-import telebot
 import datetime
-import schedule
-import time
-import threading
+import asyncio
+from aiogram import Bot, Dispatcher, types
+from aiogram.contrib.fsm_storage.memory import MemoryStorage
 
-bot = telebot.TeleBot('6034207043:AAErGIF7nMFBhHcT0fht9l3syvIbh-zUtbA')
+bot_token = '6034207043:AAErGIF7nMFBhHcT0fht9l3syvIbh-zUtbA'
+bot = Bot(token=bot_token)
+storage = MemoryStorage()
+dp = Dispatcher(bot, storage=storage)
 
 
-def enviar_mensagem(horario_definido):
+async def enviar_mensagem(horario_definido):
     mensagem = """🔵🔵Entrada Finalizada🔵🔵
 
 🐯Jogo: Fortune Tiger
@@ -16,44 +18,57 @@ def enviar_mensagem(horario_definido):
 
 ➡️ ENTRE AQUI : https://fwd.cx/wlYEVjJEzGqc""".format(horario_definido)
 
-    bot.send_message(chat_id='-928882551', text=mensagem)
+    await bot.send_message(chat_id='-928882551', text=mensagem)
+
 
 def verificar_permissao_usuario(user_id):
     usuarios_autorizados = ["1845218557"]  # Lista de IDs de usuários autorizados
     return str(user_id) in usuarios_autorizados
 
-@bot.message_handler(commands=['alterarhorarios'])
-def alterar_horarios(message):
+
+@dp.message_handler(commands=['alterarhorarios'])
+async def alterar_horarios(message: types.Message):
     if not verificar_permissao_usuario(message.from_user.id):
-        bot.reply_to(message, "Desculpe, você não tem permissão para alterar os horários.")
+        await message.reply("Desculpe, você não tem permissão para alterar os horários.")
         return
 
     horarios = message.text.split()[1:]
-    schedule.clear()
-
     for horario_definido in horarios:
         if ':' in horario_definido:
-            hora, minuto = map(int, horario_definido.split(':'))
-            horario_envio = datetime.datetime.combine(datetime.datetime.today(),
-                                                      datetime.time(hour=hora, minute=minuto)) - datetime.timedelta(
-                minutes=2)
-            horario_envio_str = horario_envio.strftime('%H:%M')
-            schedule.every().day.at(horario_envio_str).do(enviar_mensagem, horario_definido=horario_definido)
-            print("Horário alterado:", horario_definido)
+            hora_minuto = horario_definido.split(':')
+            if len(hora_minuto) == 2:
+                hora, minuto = map(int, hora_minuto)
+                horario_envio = datetime.datetime.combine(datetime.datetime.today(),
+                                                          datetime.time(hour=hora, minute=minuto)) - datetime.timedelta(
+                    minutes=2)
+                horario_envio_str = horario_envio.strftime('%H:%M')
+
+                async def enviar_mensagem_intermediario():
+                    await asyncio.sleep((horario_envio - datetime.datetime.now()).total_seconds())
+                    await enviar_mensagem(horario_definido)
+
+                asyncio.create_task(enviar_mensagem_intermediario())
+                print("Horário alterado:", horario_definido)
+            else:
+                print("Horário inválido:", horario_definido)
         else:
             print("Horário inválido:", horario_definido)
 
-    bot.reply_to(message, "Os horários foram alterados com sucesso.")
+    await message.reply("Os horários foram alterados com sucesso.")
 
-def run_schedule():
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
+
+async def on_startup(dp):
+    await bot.send_message(chat_id='-928882551', text='Bot iniciado')
+
+
+async def start_bot():
+    await dp.bot.send_message(chat_id='-928882551', text='Bot iniciado')
+    await dp.start_polling()
+
 
 def main():
-    schedule_thread = threading.Thread(target=run_schedule)
-    schedule_thread.start()
-    bot.polling()
+    asyncio.run(start_bot())
+
 
 if __name__ == '__main__':
     main()
