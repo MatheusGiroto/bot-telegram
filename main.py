@@ -1,7 +1,12 @@
+import logging
 import datetime
 import asyncio
 from aiogram import Bot, Dispatcher, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
+
+# Configurando o logger
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 bot_token = '6034207043:AAErGIF7nMFBhHcT0fht9l3syvIbh-zUtbA'
 bot = Bot(token=bot_token)
@@ -51,11 +56,11 @@ async def alterar_horarios(message: types.Message):
 
                 tarefa = enviar_mensagem_intermediario(horario_envio, horario_definido)
                 tarefas.append(tarefa)
-                print("Horário agendado:", horario_definido)
+                logger.info("Horário agendado: %s", horario_definido)
             else:
-                print("Horário inválido:", horario_definido)
+                logger.error("Horário inválido: %s", horario_definido)
         else:
-            print("Horário inválido:", horario_definido)
+            logger.error("Horário inválido: %s", horario_definido)
 
     await asyncio.gather(*tarefas)
     await message.reply("Os horários foram alterados com sucesso.")
