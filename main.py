@@ -26,6 +26,11 @@ def verificar_permissao_usuario(user_id):
     return str(user_id) in usuarios_autorizados
 
 
+async def enviar_mensagem_intermediario(horario_envio, horario_definido):
+    await asyncio.sleep((horario_envio - datetime.datetime.now()).total_seconds())
+    await enviar_mensagem(horario_definido)
+
+
 @dp.message_handler(commands=['alterarhorarios'])
 async def alterar_horarios(message: types.Message):
     if not verificar_permissao_usuario(message.from_user.id):
@@ -33,6 +38,7 @@ async def alterar_horarios(message: types.Message):
         return
 
     horarios = message.text.split()[1:]
+    tarefas = []
     for horario_definido in horarios:
         if ':' in horario_definido:
             hora_minuto = horario_definido.split(':')
@@ -43,17 +49,15 @@ async def alterar_horarios(message: types.Message):
                     minutes=2)
                 horario_envio_str = horario_envio.strftime('%H:%M')
 
-                async def enviar_mensagem_intermediario():
-                    await asyncio.sleep((horario_envio - datetime.datetime.now()).total_seconds())
-                    await enviar_mensagem(horario_definido)
-
-                asyncio.create_task(enviar_mensagem_intermediario())
-                print("Horário alterado:", horario_definido)
+                tarefa = enviar_mensagem_intermediario(horario_envio, horario_definido)
+                tarefas.append(tarefa)
+                print("Horário agendado:", horario_definido)
             else:
                 print("Horário inválido:", horario_definido)
         else:
             print("Horário inválido:", horario_definido)
 
+    await asyncio.gather(*tarefas)
     await message.reply("Os horários foram alterados com sucesso.")
 
 
